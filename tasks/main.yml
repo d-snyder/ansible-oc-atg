@@ -1,0 +1,48 @@
+---
+#
+# SETUP
+#
+
+#
+# ocplatform
+#
+
+- set_fact:
+    install_archive: "V46005-01.zip"
+    install_executable: "OCPlatform11.1.bin"
+
+- name: temporary directory for install
+  register: mktemp
+  command: mktemp -d
+
+- name: download installation archive
+  get_url:
+  args:
+    url: "{{ install_archive_url }}"
+    dest: "{{ playbook_dir }}/{{ install_archive }}"
+  when: install_archive_url is defined
+
+- name: expand archive
+  unarchive: 
+    src="{{ install_archive }}"
+    dest="{{ mktemp.stdout }}"
+    creates="{{ mktemp.stdout }}/{{ install_executable }}"
+
+- name: ensure install file is executable
+  file:
+  args:
+    path: "{{ mktemp.stdout}}/{{ install_executable }}"
+    mode: 0744
+
+- name: create silent install file for atg
+  template: 
+    src="installer.properties.j2" 
+    dest="{{ mktemp.stdout }}/atg_installer.properties"
+
+- name: install atg base
+  command: "{{ mktemp.stdout }}/{{ install_executable }} -i silent -f {{ mktemp.stdout }}/atg_installer.properties creates={{ install_root }}/ATG11.1"
+
+- name: clean up temporary directory
+  file: 
+    state=absent 
+    path="{{ mktemp.stdout }}"
